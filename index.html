@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>パスワード生成ツール</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg-light: #f4f6f9;
+      --bg-dark: #1e1e1e;
+      --fg-light: #1e1e1e;
+      --fg-dark: #e0e0e0;
+      --accent: #1976d2;
+      --card-light: #ffffff;
+      --card-dark: #2c2c2c;
+      --border: #ccc;
+      --font: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--font);
+      transition: background 0.3s, color 0.3s;
+      background: var(--bg-light);
+      color: var(--fg-light);
+    }
+
+    body.dark {
+      background: var(--bg-dark);
+      color: var(--fg-dark);
+    }
+
+    .container {
+      max-width: 880px;
+      margin: auto;
+      padding: 2rem;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .toggle-group {
+      display: flex;
+      gap: 1rem;
+    }
+
+    button.toggle {
+      background: none;
+      border: 1px solid var(--border);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 2rem;
+    }
+
+    .card {
+      background: var(--card-light);
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+      transition: background 0.3s;
+    }
+
+    body.dark .card {
+      background: var(--card-dark);
+    }
+
+    label {
+      display: block;
+      margin-top: 1.2rem;
+      font-weight: bold;
+    }
+
+    select, input, button.action {
+      width: 100%;
+      padding: 0.8rem;
+      margin-top: 0.4rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    body.dark select,
+    body.dark input {
+      background: #333;
+      color: var(--fg-dark);
+    }
+
+    button.action {
+      background-color: var(--accent);
+      color: white;
+      border: none;
+      margin-top: 1rem;
+      transition: background 0.3s;
+    }
+
+    button.action:hover {
+      background-color: #155fa0;
+    }
+
+    .row {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .row > div {
+      flex: 1;
+    }
+
+    .password-item {
+      margin-top: 1rem;
+      background: #f0f0f0;
+      padding: 0.8rem;
+      border-radius: 6px;
+      font-family: monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    body.dark .password-item {
+      background: #333;
+    }
+
+    .password-item button {
+      margin-left: 0.5rem;
+    }
+
+    .center-link {
+      display: block;
+      margin-top: 2rem;
+      text-align: center;
+      color: var(--accent);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    @media (max-width: 600px) {
+      .row {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 id="title">パスワード生成ツール</h1>
+      <div class="toggle-group">
+        <button class="toggle" onclick="toggleTheme()">🌙 <span id="modeLabel">ダーク</span></button>
+        <button class="toggle" onclick="toggleLang()">🌐 <span id="langLabel">English</span></button>
+      </div>
+    </div>
+    <div class="card">
+      <label id="strengthLabel">安全度</label>
+      <select id="strength">
+        <option value="normal">普通</option>
+        <option value="safe">安全</option>
+        <option value="very-safe">より安全</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label id="lengthLabel">文字数</label>
+          <input type="number" id="length" value="16" min="8" max="64">
+        </div>
+        <div>
+          <label id="countLabel">生成数</label>
+          <input type="number" id="count" value="5" min="1" max="30">
+        </div>
+      </div>
+
+      <label id="keyLabel">暗号キー（保存・読込時に使用）</label>
+      <input type="password" id="passphrase" placeholder="任意のパスワード">
+
+      <button class="action" onclick="generatePasswords()" id="genBtn">生成</button>
+      <button class="action" onclick="savePasswords()" id="saveBtn">保存（pa.ss）</button>
+      <button class="action" onclick="loadPasswords()" id="loadBtn">読み込み（pa.ss）</button>
+
+      <div id="password-list"></div>
+
+      <div class="center-link" onclick="downloadHTML()" id="downloadHTML">HTMLファイルを保存</div>
+    </div>
+  </div>
+
+<script>
+let lang = "ja";
+let passwordStore = [];
+
+const texts = {
+  ja: {
+    title: "パスワード生成ツール",
+    strengthLabel: "安全度",
+    lengthLabel: "文字数",
+    countLabel: "生成数",
+    keyLabel: "暗号キー（保存・読込時に使用）",
+    genBtn: "生成",
+    saveBtn: "保存（pa.ss）",
+    loadBtn: "読み込み（pa.ss）",
+    downloadHTML: "HTMLファイルを保存",
+    modeLabel: "ダーク",
+    langLabel: "English"
+  },
+  en: {
+    title: "Password Generator",
+    strengthLabel: "Strength",
+    lengthLabel: "Length",
+    countLabel: "Count",
+    keyLabel: "Encryption Key (Save/Load)",
+    genBtn: "Generate",
+    saveBtn: "Save (pa.ss)",
+    loadBtn: "Load (pa.ss)",
+    downloadHTML: "Download HTML",
+    modeLabel: "Dark",
+    langLabel: "日本語"
+  }
+};
+
+function toggleLang() {
+  lang = lang === "ja" ? "en" : "ja";
+  const t = texts[lang];
+  for (let id in t) document.getElementById(id).textContent = t[id];
+  document.documentElement.lang = lang;
+}
+
+function toggleTheme() {
+  document.body.classList.toggle("dark");
+}
+
+function getCharset(strength) {
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const digits = "0123456789";
+  const symbols = "!@#$%^&*()_+-=[]{}|;:',.<>?/";
+  let charset = lower + upper;
+  if (strength !== "normal") charset += digits;
+  if (strength === "very-safe") charset += symbols;
+  return charset;
+}
+
+function generatePasswords() {
+  const charset = getCharset(document.getElementById("strength").value);
+  const length = parseInt(document.getElementById("length").value);
+  const count = parseInt(document.getElementById("count").value);
+  const list = document.getElementById("password-list");
+  list.innerHTML = "";
+  passwordStore = [];
+  for (let i = 0; i < count; i++) {
+    let pwd = "";
+    for (let j = 0; j < length; j++) {
+      pwd += charset[Math.floor(Math.random() * charset.length)];
+    }
+    passwordStore.push(pwd);
+    const div = document.createElement("div");
+    div.className = "password-item";
+    div.innerHTML = `<span>********</span>
+      <span>
+        <button onclick="this.closest('.password-item').querySelector('span').innerText='${pwd}'">表示</button>
+        <button onclick="navigator.clipboard.writeText('${pwd}')">コピー</button>
+      </span>`;
+    list.appendChild(div);
+  }
+}
+
+async function getKey(passphrase) {
+  const enc = new TextEncoder();
+  const salt = enc.encode("pa.ss-salt");
+  const keyMat = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256"},
+    keyMat, {name: "AES-GCM", length: 256}, false, ["encrypt", "decrypt"]);
+}
+
+async function encrypt(text, key) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(text);
+  const cipher = await crypto.subtle.encrypt({name: "AES-GCM", iv}, key, encoded);
+  const combined = new Uint8Array(iv.length + cipher.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(cipher), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decrypt(b64, key) {
+  const data = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const iv = data.slice(0, 12);
+  const cipher = data.slice(12);
+  const plain = await crypto.subtle.decrypt({name: "AES-GCM", iv}, key, cipher);
+  return new TextDecoder().decode(plain);
+}
+
+async function savePasswords() {
+  const passphrase = document.getElementById("passphrase").value;
+  if (!passphrase) return alert("暗号キーを入力してください");
+  const key = await getKey(passphrase);
+  const meta = { created: new Date().toISOString(), passwords: passwordStore };
+  const enc = await encrypt(JSON.stringify(meta), key);
+  const blob = new Blob([enc], {type: "text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "pa.ss";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function loadPasswords() {
+  const passphrase = document.getElementById("passphrase").value;
+  if (!passphrase) return alert("暗号キーを入力してください");
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".ss,.pa.ss";
+  input.onchange = async () => {
+    const file = input.files[0];
+    const text = await file.text();
+    try {
+      const key = await getKey(passphrase);
+      const dec = await decrypt(text, key);
+      const meta = JSON.parse(dec);
+      passwordStore = meta.passwords;
+      document.getElementById("password-list").innerHTML = "";
+      passwordStore.forEach(pwd => {
+        const div = document.createElement("div");
+        div.className = "password-item";
+        div.innerHTML = `<span>********</span>
+          <span>
+            <button onclick="this.closest('.password-item').querySelector('span').innerText='${pwd}'">表示</button>
+            <button onclick="navigator.clipboard.writeText('${pwd}')">コピー</button>
+          </span>`;
+        document.getElementById("password-list").appendChild(div);
+      });
+    } catch {
+      alert("復号に失敗しました（暗号キーが正しいか確認）");
+    }
+  };
+  input.click();
+}
+
+function downloadHTML() {
+  const blob = new Blob([document.documentElement.outerHTML], {type: "text/html"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "password_tool.html";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+</script>
+</body>
+</html>
